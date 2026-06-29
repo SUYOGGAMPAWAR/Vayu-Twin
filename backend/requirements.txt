@@ -1,0 +1,4 @@
+earthengine-api==0.1.400
+google-auth==2.29.0
+google-api-python-client==2.128.0
+cryptography==42.0.5
