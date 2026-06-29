@@ -12,4 +12,11 @@ spec:
           - name: data-ingestion
             image: vayutwin-backend:latest
             imagePullPolicy: Never
+            volumeMounts:
+            - name: shared-data
+              mountPath: /shared
           restartPolicy: OnFailure
+          volumes:
+          - name: shared-data
+            persistentVolumeClaim:
+              claimName: shared-data-pvc
