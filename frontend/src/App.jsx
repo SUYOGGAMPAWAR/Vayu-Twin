@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css'; // Required for the map to render correctly
 
 export default function App() {
   const [data, setData] = useState([]);
@@ -55,11 +57,44 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-3 gap-8">
-          {/* Map Placeholder */}
-          <div className="col-span-2 bg-slate-900 p-6 rounded border border-slate-800 h-96">
-            <h2 className="mb-4">Live HCHO Heatmap (India)</h2>
-            <div className="w-full h-full bg-slate-950 rounded flex items-center justify-center border border-slate-800">
-               Map Visualization Placeholder
+          
+          {/* Live Geospatial Map */}
+          <div className="col-span-2 bg-slate-900 p-6 rounded border border-slate-800" style={{ height: '500px' }}>
+            <h2 className="mb-4 font-bold">Live HCHO Heatmap (India)</h2>
+            <div className="w-full h-[400px] rounded overflow-hidden border border-slate-800 relative z-0">
+              <MapContainer 
+                center={[22.5937, 78.9629]} // Centered on India
+                zoom={4} 
+                style={{ height: '100%', width: '100%' }}
+              >
+                {/* Dark theme tile layer to match your UI */}
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                />
+                
+                {/* Map over your live data to create interactive hotspots */}
+                {(Array.isArray(data) ? data : []).map((city, idx) => (
+                  <CircleMarker
+                    key={idx}
+                    center={[city.lat, city.lng]}
+                    pathOptions={{ 
+                      color: city.predicted_aqi > 150 ? '#ef4444' : city.predicted_aqi > 100 ? '#f97316' : '#22c55e',
+                      fillColor: city.predicted_aqi > 150 ? '#ef4444' : city.predicted_aqi > 100 ? '#f97316' : '#22c55e',
+                      fillOpacity: 0.6
+                    }}
+                    radius={city.predicted_aqi > 100 ? 20 : 12}
+                  >
+                    <Popup>
+                      <div className="text-slate-900 text-sm">
+                        <strong className="text-lg">{city.city}</strong><br/>
+                        Predicted AQI: <strong>{city.predicted_aqi}</strong><br/>
+                        Temperature: {city.temp_c}°C
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
             </div>
           </div>
 
@@ -74,7 +109,7 @@ export default function App() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto" style={{ maxHeight: '400px' }}>
               {loading ? (
                 <p>Loading data...</p>
               ) : filteredData.length > 0 ? (
