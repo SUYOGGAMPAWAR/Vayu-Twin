@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css'; // Required for the map to render correctly
+import 'leaflet/dist/leaflet.css';
 
 export default function App() {
   const [data, setData] = useState([]);
@@ -12,7 +12,6 @@ export default function App() {
     fetch('http://localhost:8000/data')
       .then(res => res.json())
       .then(json => {
-        // Force data to be an array even if API sends something else
         setData(Array.isArray(json) ? json : []);
         setLoading(false);
       })
@@ -23,7 +22,7 @@ export default function App() {
       });
   }, []);
 
-  // 2. Defensive filtering: ensures we never call .filter() on a null/undefined variable
+  // 2. Universal Search Filter (Controls both the list AND the map)
   const filteredData = (Array.isArray(data) ? data : []).filter(item => 
     item && item.city && item.city.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -63,18 +62,17 @@ export default function App() {
             <h2 className="mb-4 font-bold">Live HCHO Heatmap (India)</h2>
             <div className="w-full h-[400px] rounded overflow-hidden border border-slate-800 relative z-0">
               <MapContainer 
-                center={[22.5937, 78.9629]} // Centered on India
+                center={[22.5937, 78.9629]} 
                 zoom={4} 
                 style={{ height: '100%', width: '100%' }}
               >
-                {/* Dark theme tile layer to match your UI */}
                 <TileLayer
                   url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   attribution='&copy; <a href="https://carto.com/">CARTO</a>'
                 />
                 
-                {/* Map over your live data to create interactive hotspots */}
-                {(Array.isArray(data) ? data : []).map((city, idx) => (
+                {/* THE FIX: The map now loops over 'filteredData' instead of raw 'data' */}
+                {filteredData.map((city, idx) => (
                   <CircleMarker
                     key={idx}
                     center={[city.lat, city.lng]}
