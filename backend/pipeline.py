@@ -82,7 +82,7 @@ if __name__ == "__main__":
     processed_data['risk_level'] = processed_data['risk_level'].astype(str)
     processed_data = processed_data.fillna("Unknown")
     
-    with open('/shared/data.json', 'w') as f:
+    with open('data.json', 'w') as f:
         json.dump(processed_data.to_dict(orient='records'), f)
         
-    print("Successfully wrote data to /shared/data.json")
+    print("Successfully wrote data to data.json")
