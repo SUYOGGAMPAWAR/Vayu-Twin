@@ -30,3 +30,5 @@ __pycache__/
 *.idx
 .env
 data/*.gribx
+kubectl
+minikube-linux-amd64

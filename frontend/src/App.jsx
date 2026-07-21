@@ -9,7 +9,7 @@ export default function App() {
 
   // 1. Fetch live data
   useEffect(() => {
-    fetch('http://localhost:8000/data')
+    fetch('https://vayu-twin-backend.onrender.com')
       .then(res => res.json())
       .then(json => {
         setData(Array.isArray(json) ? json : []);
