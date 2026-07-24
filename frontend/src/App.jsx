@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import './index.css'
 
 import { supabase } from './supabaseClient';
 import TrendChart from './TrendChart';
@@ -28,8 +27,8 @@ function MapController({ selectedCity }) {
   return null;
 }
 
-// AeroTwin Futuristic Logo Icon
-function AeroTwinLogo() {
+// VayuTwin Logo Icon
+function VayuTwinLogo() {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/20 shrink-0">
@@ -41,7 +40,7 @@ function AeroTwinLogo() {
       </div>
       <div>
         <h1 className="text-xl font-bold bg-gradient-to-r from-white via-slate-100 to-blue-400 bg-clip-text text-transparent leading-none">
-          AeroTwin
+          VayuTwin
         </h1>
         <span className="text-[10px] text-cyan-400 font-semibold tracking-wider uppercase">
           AI Digital Twin
@@ -171,7 +170,7 @@ export default function App() {
     const link = document.createElement('a');
 
     link.setAttribute('href', url);
-    link.setAttribute('download', `AeroTwin_Telemetry_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `VayuTwin_Telemetry_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -180,7 +179,7 @@ export default function App() {
   if (loadingAuth) {
     return (
       <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center">
-        <p className="text-slate-400 font-medium">Authenticating AeroTwin Console...</p>
+        <p className="text-slate-400 font-medium">Authenticating VayuTwin Console...</p>
       </div>
     );
   }
@@ -190,7 +189,7 @@ export default function App() {
       <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center p-4">
         <div className="bg-[#111827] border border-slate-800 p-8 rounded-2xl max-w-md w-full shadow-2xl text-center">
           <div className="flex justify-center mb-6">
-            <AeroTwinLogo />
+            <VayuTwinLogo />
           </div>
 
           <p className="text-slate-400 text-sm mb-8">
@@ -225,7 +224,7 @@ export default function App() {
       <div className="w-64 bg-[#0a0f1c] border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
         <div>
           <div className="mb-8">
-            <AeroTwinLogo />
+            <VayuTwinLogo />
           </div>
 
           <nav className="flex flex-col gap-2">
@@ -343,7 +342,7 @@ export default function App() {
 
         {/* MAP & SIDEBAR LIST */}
         <div className="flex gap-6 h-[420px] mb-6">
-          {/* MAP */}
+          {/* MAP CONTAINER (zoomControl={false} hides the + / - buttons) */}
           <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm relative z-0">
             <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/90 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
               <div className="flex items-center gap-2">
@@ -383,7 +382,12 @@ export default function App() {
             </div>
 
             <div className="flex-1 rounded-lg overflow-hidden border border-slate-800 relative">
-              <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
+              <MapContainer 
+                center={DEFAULT_CENTER} 
+                zoom={DEFAULT_ZOOM} 
+                zoomControl={false} 
+                style={{ height: '100%', width: '100%' }}
+              >
                 <TileLayer url={tileUrl} attribution='&copy; CARTO' />
                 <MapController selectedCity={selectedCity} />
 
