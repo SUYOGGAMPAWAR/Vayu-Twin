@@ -484,8 +484,8 @@ export default function App() {
         </div>
 
         {/* ROW 3: COMPACT TREND CHART PANEL */}
-        <div className="bg-[#111827] border border-slate-800 rounded-xl p-3 h-40 shadow-sm shrink-0">
-          <TrendChart cityName={selectedCity?.city} data={historyData} />
+        <div className="bg-[#111827] border border-slate-800 rounded-xl p-4 h-48 shadow-sm shrink-0 overflow-hidden">
+            <TrendChart cityName={selectedCity?.city} data={historyData} />
         </div>
       </div>
     </div>
