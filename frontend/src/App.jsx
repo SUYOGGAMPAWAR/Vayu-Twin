@@ -8,15 +8,22 @@ import PolicySimulator from './PolicySimulator';
 import HeatmapLayer from './HeatmapLayer';
 import ExposureCard from './ExposureCard';
 
-// Helper Component for Smooth Map Zooming
-function FlyToCity({ center }) {
+// Default India Overview Center and Zoom Level
+const DEFAULT_CENTER = [22.5937, 78.9629];
+const DEFAULT_ZOOM = 4.5;
+const ZOOMED_IN_LEVEL = 10;
+
+// --- Controller for Smooth Map Panning/Zooming ---
+function MapController({ selectedCity }) {
   const map = useMap();
 
   useEffect(() => {
-    if (center) {
-      map.flyTo([center.lat, center.lng], 10, { duration: 1.5 });
+    if (selectedCity) {
+      map.flyTo([selectedCity.lat, selectedCity.lng], ZOOMED_IN_LEVEL, { duration: 1.2 });
+    } else {
+      map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 1.2 });
     }
-  }, [center, map]);
+  }, [selectedCity, map]);
 
   return null;
 }
@@ -27,15 +34,16 @@ export default function VayuTwinDashboard() {
 
   const [cities, setCities] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null); // Starts zoomed out (null)
   const [historyData, setHistoryData] = useState([]);
 
   // Policy Simulation Sliders
   const [trafficReduction, setTrafficReduction] = useState(0);
   const [industrialReduction, setIndustrialReduction] = useState(0);
 
-  // Map View Mode: 'heatmap' vs 'markers'
-  const [viewMode, setViewMode] = useState('heatmap');
+  // Map Controls
+  const [viewMode, setViewMode] = useState('heatmap'); // 'heatmap' vs 'markers'
+  const [mapStyle, setMapStyle] = useState('dark'); // 'dark' vs 'satellite'
 
   // --- 1. Supabase Auth Listener ---
   useEffect(() => {
@@ -54,13 +62,10 @@ export default function VayuTwinDashboard() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Login & Logout Handlers
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
+      options: { redirectTo: window.location.origin },
     });
   };
 
@@ -68,14 +73,14 @@ export default function VayuTwinDashboard() {
     await supabase.auth.signOut();
   };
 
-  // --- 2. Calculate Simulated AQI ---
+  // --- 2. Calculate Policy Offsets ---
   const calculateSimulatedAQI = (baseAqi) => {
     if (!baseAqi) return 0;
     const offsetFactor = 1 - (trafficReduction * 0.0035 + industrialReduction * 0.0025);
     return Math.max(10, Math.round(baseAqi * offsetFactor));
   };
 
-  // --- 3. Fetch City Telemetry Data ---
+  // --- 3. Fetch Telemetry Data ---
   useEffect(() => {
     if (!session) return;
 
@@ -85,13 +90,9 @@ export default function VayuTwinDashboard() {
         if (Array.isArray(data)) {
           const sortedData = data.sort((a, b) => (b.original_aqi || 0) - (a.original_aqi || 0));
           setCities(sortedData);
-
-          if (sortedData.length > 0 && !selectedCity) {
-            setSelectedCity(sortedData[0]);
-          }
         }
       })
-      .catch((err) => console.error('Error loading backend data:', err));
+      .catch((err) => console.error('Error fetching backend data:', err));
   }, [session]);
 
   // --- 4. Fetch 24-Hour Trend History ---
@@ -100,11 +101,28 @@ export default function VayuTwinDashboard() {
       fetch(`https://vayu-twin-backend.onrender.com/history/${selectedCity.city}`)
         .then((res) => res.json())
         .then((data) => setHistoryData(data))
-        .catch((err) => console.error('Error loading trend history:', err));
+        .catch((err) => console.error('Error fetching history:', err));
+    } else {
+      setHistoryData([]);
     }
   }, [selectedCity, session]);
 
-  // Transform cities with simulated policy metrics
+  // --- 5. Interactive City Selection Logic (Zoom In / Zoom Out on Repeat Click) ---
+  const handleCityClick = (cityObj) => {
+    if (selectedCity?.city === cityObj.city) {
+      // If already selected: Unselect and smooth fly back to zoomed-out default view
+      setSelectedCity(null);
+    } else {
+      // Zoom in to selected city
+      setSelectedCity(cityObj);
+    }
+  };
+
+  const resetMapView = () => {
+    setSelectedCity(null);
+  };
+
+  // Transformation Data
   const citiesWithSimulation = cities.map((c) => ({
     ...c,
     simulated_aqi: calculateSimulatedAQI(c.predicted_aqi),
@@ -118,7 +136,7 @@ export default function VayuTwinDashboard() {
 
   const criticalHotspots = citiesWithSimulation.filter((c) => (c.original_aqi || 0) > 50).length;
 
-  // --- 5. Export Telemetry & Simulation Data to CSV ---
+  // --- CSV Export ---
   const exportToCSV = () => {
     if (!citiesWithSimulation || citiesWithSimulation.length === 0) return;
 
@@ -161,11 +179,11 @@ export default function VayuTwinDashboard() {
     document.body.removeChild(link);
   };
 
-  // --- AUTH SCREEN (When not logged in) ---
+  // --- AUTH SCREEN ---
   if (loadingAuth) {
     return (
       <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center font-sans">
-        <p className="text-slate-400">Loading VayuTwin Authentication...</p>
+        <p className="text-slate-400">Connecting to VayuTwin Security Portal...</p>
       </div>
     );
   }
@@ -173,7 +191,7 @@ export default function VayuTwinDashboard() {
   if (!session) {
     return (
       <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center font-sans p-4">
-        <div className="bg-[#111827] border border-slate-800 p-8 rounded-xl max-w-md w-full shadow-xl text-center">
+        <div className="bg-[#111827] border border-slate-800 p-8 rounded-xl max-w-md w-full shadow-2xl text-center">
           <h1 className="text-3xl font-bold text-blue-500 mb-2">VayuTwin</h1>
           <p className="text-slate-400 text-sm mb-8">
             Eco-Societal Air Quality Digital Twin Platform
@@ -208,7 +226,12 @@ export default function VayuTwinDashboard() {
     );
   }
 
-  // --- AUTHENTICATED DASHBOARD SCREEN ---
+  // Tile layer mapping
+  const tileUrl =
+    mapStyle === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
   return (
     <div className="flex h-screen bg-[#0a0f1c] text-slate-300 font-sans overflow-hidden">
       {/* NAVIGATION SIDEBAR */}
@@ -225,14 +248,14 @@ export default function VayuTwinDashboard() {
           </nav>
         </div>
 
-        {/* USER PROFILE & LOGOUT */}
+        {/* PROFILE CARD */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
             {session.user.user_metadata?.avatar_url ? (
               <img
                 src={session.user.user_metadata.avatar_url}
                 alt="Avatar"
-                className="w-8 h-8 rounded-full"
+                className="w-8 h-8 rounded-full border border-blue-500/30"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
@@ -243,32 +266,32 @@ export default function VayuTwinDashboard() {
               <p className="text-xs font-semibold text-slate-200 truncate">
                 {session.user.user_metadata?.full_name || session.user.email}
               </p>
-              <p className="text-[10px] text-slate-500">Authenticated</p>
+              <p className="text-[10px] text-emerald-400 font-medium">● Online</p>
             </div>
           </div>
           <button
             onClick={handleSignOut}
             title="Sign Out"
-            className="text-slate-400 hover:text-red-400 text-xs p-1"
+            className="text-slate-400 hover:text-red-400 text-xs p-1 transition"
           >
             ✕
           </button>
         </div>
       </div>
 
-      {/* DASHBOARD BODY */}
+      {/* MAIN BODY */}
       <div className="flex-1 flex flex-col p-8 overflow-y-auto">
         {/* HEADER */}
         <div className="mb-6 flex justify-between items-start">
           <div>
             <h2 className="text-3xl font-bold text-white mb-1">Eco-Societal Digital Twin</h2>
             <p className="text-slate-400 text-sm">
-              Sentinel-5P HCHO Satellite Telemetry & Real Census Demographics
+              Sentinel-5P HCHO Satellite Telemetry & Real-Time Policy Simulation
             </p>
           </div>
 
           <div className="flex gap-3 items-center">
-            {/* EXPORT CSV BUTTON */}
+            {/* EXPORT BUTTON */}
             <button
               onClick={exportToCSV}
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 transition"
@@ -287,7 +310,7 @@ export default function VayuTwinDashboard() {
                   viewMode === 'heatmap' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Continuous Heatmap
+                Heatmap Surface
               </button>
               <button
                 onClick={() => setViewMode('markers')}
@@ -295,30 +318,33 @@ export default function VayuTwinDashboard() {
                   viewMode === 'markers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Pin Markers
+                Station Markers
               </button>
             </div>
           </div>
         </div>
 
-        {/* TOP METRICS & SIMULATOR GRID */}
+        {/* METRICS & SIMULATOR GRID */}
         <div className="grid grid-cols-4 gap-6 mb-6">
           <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm">
             <h3 className="text-xs font-medium text-slate-400 mb-1">Critical Hotspots (Original AQI &gt; 50)</h3>
             <p className="text-3xl font-bold text-red-500">{criticalHotspots}</p>
           </div>
 
-          <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm">
-            <h3 className="text-xs font-medium text-slate-400 mb-1">Active Focus Location</h3>
-            <p className="text-2xl font-bold text-blue-400 mb-1">{selectedCity?.city || 'None'}</p>
-            <span className="text-[11px] text-slate-500">Targeted for scenario evaluation</span>
+          <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-medium text-slate-400 mb-1">Active Focus Location</h3>
+              <p className="text-2xl font-bold text-blue-400 truncate mb-1">
+                {selectedCity?.city || 'National Overview'}
+              </p>
+            </div>
+            <p className="text-[10px] text-slate-500">
+              {selectedCity ? 'Click city marker again to unselect' : 'Select city to inspect target'}
+            </p>
           </div>
 
-          {/* SOCIETAL EXPOSURE CARD */}
-          <ExposureCard
-            selectedCity={activeSelectedCity}
-            simulatedAqi={activeSelectedCity?.simulated_aqi}
-          />
+          {/* EXPOSURE CARD */}
+          <ExposureCard selectedCity={activeSelectedCity} simulatedAqi={activeSelectedCity?.simulated_aqi} />
 
           {/* POLICY SIMULATOR CARD */}
           <PolicySimulator
@@ -330,67 +356,111 @@ export default function VayuTwinDashboard() {
         </div>
 
         {/* MAP & CITY LIST SECTION */}
-        <div className="flex gap-6 h-[400px] mb-6">
-          {/* LEAFLET MAP */}
+        <div className="flex gap-6 h-[420px] mb-6">
+          {/* LEAFLET MAP CONTAINER */}
           <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm relative z-0">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-semibold text-white">Spatial Surface HCHO Density</h3>
-              <span className="text-xs text-slate-400">
-                Mode: {viewMode === 'heatmap' ? 'Gradient Surface Interpolation' : 'Station Markers'}
-              </span>
+            {/* SLEEK MAP OVERLAY HUD */}
+            <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/85 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="font-semibold text-slate-200">
+                  {selectedCity ? selectedCity.city : 'National Grid'}
+                </span>
+              </div>
+
+              {selectedCity && (
+                <button
+                  onClick={resetMapView}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-2 py-1 rounded text-[11px] transition shadow"
+                >
+                  🎯 Recenter Map
+                </button>
+              )}
+
+              {/* Map Tile Style Switcher */}
+              <div className="flex border-l border-slate-700 pl-3 gap-1">
+                <button
+                  onClick={() => setMapStyle('dark')}
+                  className={`px-2 py-0.5 rounded text-[10px] ${
+                    mapStyle === 'dark' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Cyber Dark
+                </button>
+                <button
+                  onClick={() => setMapStyle('satellite')}
+                  className={`px-2 py-0.5 rounded text-[10px] ${
+                    mapStyle === 'satellite' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Satellite
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 rounded-md overflow-hidden border border-slate-800">
-              <MapContainer
-                center={[22.5937, 78.9629]}
-                zoom={4.5}
-                style={{ height: '100%', width: '100%' }}
-              >
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                />
+            {/* LEAFLET CONTAINER */}
+            <div className="flex-1 rounded-md overflow-hidden border border-slate-800 relative">
+              <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
+                <TileLayer url={tileUrl} attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
 
-                <FlyToCity center={selectedCity} />
+                <MapController selectedCity={selectedCity} />
 
                 {viewMode === 'heatmap' && <HeatmapLayer points={citiesWithSimulation} />}
 
-                {citiesWithSimulation.map((c) => (
-                  <CircleMarker
-                    key={c.city}
-                    center={[c.lat, c.lng]}
-                    radius={(c.original_aqi || 0) > 50 ? 10 : 7}
-                    eventHandlers={{
-                      click: () => setSelectedCity(c),
-                    }}
-                    pathOptions={{
-                      color: (c.original_aqi || 0) > 50 ? '#ef4444' : '#3b82f6',
-                      fillColor: (c.original_aqi || 0) > 50 ? '#ef4444' : '#3b82f6',
-                      fillOpacity: viewMode === 'heatmap' ? 0.3 : 0.7,
-                      weight: 1.5,
-                    }}
-                  >
-                    <Popup className="text-slate-900 font-sans">
-                      <div className="font-bold text-base mb-1">{c.city}</div>
-                      <div className="text-sm text-amber-600 mb-0.5">
-                        <strong>Original AQI:</strong> {c.original_aqi || 'N/A'}
-                      </div>
-                      <div className="text-sm text-blue-600 mb-0.5">
-                        <strong>HCHO Only:</strong> {c.simulated_aqi}
-                      </div>
-                      <div className="text-sm text-slate-600">
-                        <strong>Population:</strong> {c.population ? c.population.toLocaleString() : 'N/A'}
-                      </div>
-                    </Popup>
-                  </CircleMarker>
-                ))}
+                {citiesWithSimulation.map((c) => {
+                  const isSelected = selectedCity?.city === c.city;
+                  const isCritical = (c.original_aqi || 0) > 50;
+
+                  return (
+                    <CircleMarker
+                      key={c.city}
+                      center={[c.lat, c.lng]}
+                      radius={isSelected ? 14 : isCritical ? 10 : 7}
+                      eventHandlers={{
+                        click: () => handleCityClick(c),
+                      }}
+                      pathOptions={{
+                        color: isSelected ? '#38bdf8' : isCritical ? '#ef4444' : '#3b82f6',
+                        fillColor: isSelected ? '#38bdf8' : isCritical ? '#ef4444' : '#3b82f6',
+                        fillOpacity: isSelected ? 0.9 : viewMode === 'heatmap' ? 0.4 : 0.75,
+                        weight: isSelected ? 3 : 1.5,
+                      }}
+                    >
+                      <Popup className="text-slate-900 font-sans">
+                        <div className="font-bold text-base mb-1">{c.city}</div>
+                        <div className="text-xs text-slate-500 mb-2">
+                          {isSelected ? 'Click marker again to zoom out' : 'Click marker to focus'}
+                        </div>
+                        <div className="text-sm text-amber-600 mb-0.5">
+                          <strong>Original AQI:</strong> {c.original_aqi || 'N/A'}
+                        </div>
+                        <div className="text-sm text-blue-600 mb-0.5">
+                          <strong>HCHO Only:</strong> {c.simulated_aqi}
+                        </div>
+                        <div className="text-sm text-slate-600">
+                          <strong>Population:</strong> {c.population ? c.population.toLocaleString() : 'N/A'}
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  );
+                })}
               </MapContainer>
             </div>
           </div>
 
-          {/* SIDEBAR LIST */}
+          {/* SIDEBAR LOCATION LIST */}
           <div className="flex-1 bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm">
-            <h3 className="text-sm font-semibold text-white mb-3">Location Database</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-semibold text-white">Location Database</h3>
+              {selectedCity && (
+                <button
+                  onClick={resetMapView}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 underline"
+                >
+                  Clear Selection
+                </button>
+              )}
+            </div>
 
             <input
               type="text"
@@ -400,43 +470,48 @@ export default function VayuTwinDashboard() {
               className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-md px-3 py-2 mb-3 focus:outline-none focus:border-blue-500 text-sm transition-colors"
             />
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-              {filteredCities.map((city) => (
-                <div
-                  key={city.city}
-                  onClick={() => setSelectedCity(city)}
-                  className={`p-3 rounded-md cursor-pointer transition-colors border ${
-                    selectedCity?.city === city.city
-                      ? 'bg-[#1e293b] border-blue-500/50'
-                      : 'bg-[#0a0f1c]/50 border-transparent hover:bg-[#1e293b]'
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-slate-200">{city.city}</span>
-                  </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {filteredCities.map((city) => {
+                const isSelected = selectedCity?.city === city.city;
 
-                  <div className="flex gap-2 mb-2">
-                    <span className="text-xs px-2 py-1 rounded font-semibold bg-amber-500/20 text-amber-400">
-                      Original: {city.original_aqi || '--'}
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded font-semibold bg-blue-500/20 text-blue-400">
-                      HCHO Only: {city.simulated_aqi}
-                    </span>
-                  </div>
+                return (
+                  <div
+                    key={city.city}
+                    onClick={() => handleCityClick(city)}
+                    className={`p-3 rounded-md cursor-pointer transition-all border ${
+                      isSelected
+                        ? 'bg-[#1e293b] border-blue-500 shadow-md ring-1 ring-blue-500/50'
+                        : 'bg-[#0a0f1c]/50 border-transparent hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="font-medium text-slate-200">{city.city}</span>
+                      {isSelected && <span className="text-[10px] text-blue-400 font-semibold">Active Focus</span>}
+                    </div>
 
-                  <div className="flex justify-between items-center text-xs text-slate-500">
-                    <span>{city.vcd_mol_m2} mol/m²</span>
-                    <span>
-                      {city.population ? `${(city.population / 1000000).toFixed(1)}M pop` : `${city.temp_c}°C`}
-                    </span>
+                    <div className="flex gap-2 mb-2">
+                      <span className="text-xs px-2 py-0.5 rounded font-semibold bg-amber-500/20 text-amber-400">
+                        Original: {city.original_aqi || '--'}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded font-semibold bg-blue-500/20 text-blue-400">
+                        HCHO Only: {city.simulated_aqi}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs text-slate-500">
+                      <span>{city.vcd_mol_m2} mol/m²</span>
+                      <span>
+                        {city.population ? `${(city.population / 1000000).toFixed(1)}M pop` : `${city.temp_c}°C`}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* RECHARTS TREND CHART */}
+        {/* TIME-SERIES TREND CHART PANEL */}
         <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 h-64 shadow-sm shrink-0">
           <TrendChart cityName={selectedCity?.city} data={historyData} />
         </div>

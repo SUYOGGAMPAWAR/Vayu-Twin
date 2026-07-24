@@ -3,16 +3,15 @@ import React from 'react';
 export default function ExposureCard({ selectedCity, simulatedAqi }) {
   if (!selectedCity) {
     return (
-      <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm h-full flex items-center justify-center text-slate-500 text-xs">
-        Select a city to inspect human health exposure risk.
+      <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm h-full flex flex-col justify-center items-center text-center text-slate-500 text-xs">
+        <span className="text-xl mb-1">🌍</span>
+        <span>Select any city marker on the map to inspect societal health exposure.</span>
       </div>
     );
   }
 
-  // Use real population from backend data, fallback to 1M if syncing
   const population = selectedCity.population || 1000000;
 
-  // Real Health Risk Multiplier formula: (AQI / 50) * (Population / 5M)
   const exposureIndex = Number(
     (((simulatedAqi || 20) / 50) * (population / 5000000)).toFixed(2)
   );
@@ -25,7 +24,6 @@ export default function ExposureCard({ selectedCity, simulatedAqi }) {
 
   const risk = getRiskCategory(exposureIndex);
 
-  // Formatting population numbers (e.g. 15.4M or 850k)
   const formattedPopulation =
     population >= 1000000
       ? `${(population / 1000000).toFixed(1)}M`

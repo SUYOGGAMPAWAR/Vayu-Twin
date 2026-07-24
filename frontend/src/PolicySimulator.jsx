@@ -1,12 +1,12 @@
 import React from 'react';
 
-export default function PolicySimulator({ 
-  trafficReduction = 0, 
-  setTrafficReduction, 
-  industrialReduction = 0, 
-  setIndustrialReduction 
+export default function PolicySimulator({
+  trafficReduction = 0,
+  setTrafficReduction,
+  industrialReduction = 0,
+  setIndustrialReduction,
 }) {
-  const combinedImpact = Math.round((trafficReduction * 0.35) + (industrialReduction * 0.25));
+  const combinedImpact = Math.round(trafficReduction * 0.35 + industrialReduction * 0.25);
 
   const handleReset = () => {
     if (setTrafficReduction) setTrafficReduction(0);
@@ -28,19 +28,19 @@ export default function PolicySimulator({
               </button>
             )}
             <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">
-              Digital Twin Mode
+              Digital Twin
             </span>
           </div>
         </div>
 
-        <p className="text-xs text-slate-400 mb-5">
-          Simulate environmental policy interventions to forecast regional VOC/HCHO mitigation.
+        <p className="text-xs text-slate-400 mb-4">
+          Simulate environmental policy levers to forecast regional VOC/HCHO mitigation.
         </p>
 
-        {/* Traffic / EV Reduction Slider */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs mb-1.5">
-            <span className="text-slate-300 font-medium">EV Adoption / Traffic Fleet Reduction</span>
+        {/* Traffic / EV Slider */}
+        <div className="mb-3">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-slate-300 font-medium">EV Adoption / Traffic -%</span>
             <span className="text-blue-400 font-semibold">-{trafficReduction}%</span>
           </div>
           <input
@@ -55,8 +55,8 @@ export default function PolicySimulator({
         </div>
 
         {/* Industrial VOC Abatement Slider */}
-        <div className="mb-2">
-          <div className="flex justify-between text-xs mb-1.5">
+        <div>
+          <div className="flex justify-between text-xs mb-1">
             <span className="text-slate-300 font-medium">Industrial VOC Abatement</span>
             <span className="text-emerald-400 font-semibold">-{industrialReduction}%</span>
           </div>
@@ -72,7 +72,7 @@ export default function PolicySimulator({
         </div>
       </div>
 
-      <div className="pt-3 mt-4 border-t border-slate-800/80 flex justify-between items-center text-xs">
+      <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-xs">
         <span className="text-slate-400">Forecasted AQI Offset:</span>
         <span className={`font-bold ${combinedImpact > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
           -{combinedImpact}% Regional AQI
