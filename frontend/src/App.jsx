@@ -8,12 +8,11 @@ import PolicySimulator from './PolicySimulator';
 import HeatmapLayer from './HeatmapLayer';
 import ExposureCard from './ExposureCard';
 
-// Default India Overview Center and Zoom Level
 const DEFAULT_CENTER = [22.5937, 78.9629];
 const DEFAULT_ZOOM = 4.5;
 const ZOOMED_IN_LEVEL = 10;
 
-// --- Controller for Smooth Map Panning/Zooming ---
+// Helper to handle smooth map flying
 function MapController({ selectedCity }) {
   const map = useMap();
 
@@ -28,33 +27,54 @@ function MapController({ selectedCity }) {
   return null;
 }
 
-export default function VayuTwinDashboard() {
+// AeroTwin Futuristic Logo Icon
+function AeroTwinLogo() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/20 shrink-0">
+        <div className="w-full h-full bg-[#0a0f1c] rounded-[10px] flex items-center justify-center">
+          <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 002.5-2.5V14M12 21a9 9 0 100-18 9 9 0 000 18z" />
+          </svg>
+        </div>
+      </div>
+      <div>
+        <h1 className="text-xl font-bold bg-gradient-to-r from-white via-slate-100 to-blue-400 bg-clip-text text-transparent leading-none">
+          AeroTwin
+        </h1>
+        <span className="text-[10px] text-cyan-400 font-semibold tracking-wider uppercase">
+          AI Digital Twin
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
   const [session, setSession] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   const [cities, setCities] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState(null); // Starts zoomed out (null)
+  const [selectedCity, setSelectedCity] = useState(null);
   const [historyData, setHistoryData] = useState([]);
 
-  // Policy Simulation Sliders
+  // Policy Simulator Sliders
   const [trafficReduction, setTrafficReduction] = useState(0);
   const [industrialReduction, setIndustrialReduction] = useState(0);
 
-  // Map Controls
-  const [viewMode, setViewMode] = useState('heatmap'); // 'heatmap' vs 'markers'
-  const [mapStyle, setMapStyle] = useState('dark'); // 'dark' vs 'satellite'
+  // Map Display Controls
+  const [viewMode, setViewMode] = useState('heatmap');
+  const [mapStyle, setMapStyle] = useState('dark');
 
-  // --- 1. Supabase Auth Listener ---
+  // Supabase Auth Session Handling
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoadingAuth(false);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoadingAuth(false);
     });
@@ -73,14 +93,13 @@ export default function VayuTwinDashboard() {
     await supabase.auth.signOut();
   };
 
-  // --- 2. Calculate Policy Offsets ---
   const calculateSimulatedAQI = (baseAqi) => {
     if (!baseAqi) return 0;
     const offsetFactor = 1 - (trafficReduction * 0.0035 + industrialReduction * 0.0025);
     return Math.max(10, Math.round(baseAqi * offsetFactor));
   };
 
-  // --- 3. Fetch Telemetry Data ---
+  // Fetch Telemetry Data
   useEffect(() => {
     if (!session) return;
 
@@ -92,10 +111,10 @@ export default function VayuTwinDashboard() {
           setCities(sortedData);
         }
       })
-      .catch((err) => console.error('Error fetching backend data:', err));
+      .catch((err) => console.error('Error fetching backend telemetry:', err));
   }, [session]);
 
-  // --- 4. Fetch 24-Hour Trend History ---
+  // Fetch 24h Trend History
   useEffect(() => {
     if (selectedCity?.city && session) {
       fetch(`https://vayu-twin-backend.onrender.com/history/${selectedCity.city}`)
@@ -107,22 +126,17 @@ export default function VayuTwinDashboard() {
     }
   }, [selectedCity, session]);
 
-  // --- 5. Interactive City Selection Logic (Zoom In / Zoom Out on Repeat Click) ---
+  // Toggle selection on city click
   const handleCityClick = (cityObj) => {
     if (selectedCity?.city === cityObj.city) {
-      // If already selected: Unselect and smooth fly back to zoomed-out default view
-      setSelectedCity(null);
+      setSelectedCity(null); // Zoom back out
     } else {
-      // Zoom in to selected city
-      setSelectedCity(cityObj);
+      setSelectedCity(cityObj); // Zoom in
     }
   };
 
-  const resetMapView = () => {
-    setSelectedCity(null);
-  };
+  const resetMapView = () => setSelectedCity(null);
 
-  // Transformation Data
   const citiesWithSimulation = cities.map((c) => ({
     ...c,
     simulated_aqi: calculateSimulatedAQI(c.predicted_aqi),
@@ -133,91 +147,64 @@ export default function VayuTwinDashboard() {
   );
 
   const activeSelectedCity = citiesWithSimulation.find((c) => c.city === selectedCity?.city) || selectedCity;
-
   const criticalHotspots = citiesWithSimulation.filter((c) => (c.original_aqi || 0) > 50).length;
 
-  // --- CSV Export ---
   const exportToCSV = () => {
     if (!citiesWithSimulation || citiesWithSimulation.length === 0) return;
 
     const headers = [
-      'City',
-      'Latitude',
-      'Longitude',
-      'Temperature (°C)',
-      'Humidity (%)',
-      'HCHO VCD (mol/m²)',
-      'HCHO AQI (Raw AI)',
-      'HCHO AQI (Simulated)',
-      'Original AQI (Sensors)',
-      'Census Population',
+      'City', 'Latitude', 'Longitude', 'Temp (°C)', 'Humidity (%)',
+      'HCHO VCD (mol/m²)', 'HCHO AQI (Raw)', 'Simulated AQI',
+      'Original Sensor AQI', 'Population'
     ];
 
     const rows = citiesWithSimulation.map((c) => [
-      `"${c.city}"`,
-      c.lat,
-      c.lng,
-      c.temp_c,
-      c.humidity,
-      c.vcd_mol_m2,
-      c.predicted_aqi,
-      c.simulated_aqi,
-      c.original_aqi || 'N/A',
-      c.population || 'N/A',
+      `"${c.city}"`, c.lat, c.lng, c.temp_c, c.humidity,
+      c.vcd_mol_m2, c.predicted_aqi, c.simulated_aqi,
+      c.original_aqi || 'N/A', c.population || 'N/A'
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
-    const timestamp = new Date().toISOString().split('T')[0];
     link.setAttribute('href', url);
-    link.setAttribute('download', `VayuTwin_AQI_Export_${timestamp}.csv`);
+    link.setAttribute('download', `AeroTwin_Telemetry_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // --- AUTH SCREEN ---
   if (loadingAuth) {
     return (
-      <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center font-sans">
-        <p className="text-slate-400">Connecting to VayuTwin Security Portal...</p>
+      <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center">
+        <p className="text-slate-400 font-medium">Authenticating AeroTwin Console...</p>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center font-sans p-4">
-        <div className="bg-[#111827] border border-slate-800 p-8 rounded-xl max-w-md w-full shadow-2xl text-center">
-          <h1 className="text-3xl font-bold text-blue-500 mb-2">VayuTwin</h1>
+      <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center p-4">
+        <div className="bg-[#111827] border border-slate-800 p-8 rounded-2xl max-w-md w-full shadow-2xl text-center">
+          <div className="flex justify-center mb-6">
+            <AeroTwinLogo />
+          </div>
+
           <p className="text-slate-400 text-sm mb-8">
-            Eco-Societal Air Quality Digital Twin Platform
+            Atmospheric Digital Twin & Policy Impact Platform
           </p>
 
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white text-slate-900 font-semibold py-3 px-4 rounded-lg hover:bg-slate-100 transition duration-200 shadow"
+            className="w-full flex items-center justify-center gap-3 bg-white text-slate-900 font-semibold py-3 px-4 rounded-xl hover:bg-slate-100 transition shadow-lg"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
             Sign in with Google
           </button>
@@ -226,75 +213,76 @@ export default function VayuTwinDashboard() {
     );
   }
 
-  // Tile layer mapping
   const tileUrl =
     mapStyle === 'satellite'
       ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
   return (
-    <div className="flex h-screen bg-[#0a0f1c] text-slate-300 font-sans overflow-hidden">
-      {/* NAVIGATION SIDEBAR */}
+    <div className="flex h-screen bg-[#0a0f1c] text-slate-300 overflow-hidden">
+      {/* SIDEBAR */}
       <div className="w-64 bg-[#0a0f1c] border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-blue-500 mb-10">VayuTwin</h1>
+          <div className="mb-8">
+            <AeroTwinLogo />
+          </div>
+
           <nav className="flex flex-col gap-2">
-            <button className="bg-blue-600 text-white text-left px-4 py-3 rounded-md font-medium transition">
+            <button className="bg-blue-600 text-white text-left px-4 py-2.5 rounded-lg font-medium text-sm transition">
               Live Hotspots
             </button>
-            <button className="text-slate-400 text-left px-4 py-3 rounded-md font-medium hover:bg-slate-800/50 transition">
+            <button className="text-slate-400 text-left px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-slate-800/50 transition">
               MLOps Pipeline
             </button>
           </nav>
         </div>
 
-        {/* PROFILE CARD */}
+        {/* PROFILE FOOTER */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3 overflow-hidden">
+          <div className="flex items-center gap-2.5 min-w-0">
             {session.user.user_metadata?.avatar_url ? (
               <img
                 src={session.user.user_metadata.avatar_url}
-                alt="Avatar"
-                className="w-8 h-8 rounded-full border border-blue-500/30"
+                alt="User"
+                className="w-8 h-8 rounded-full border border-blue-500/30 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white shrink-0">
                 {session.user.email?.[0].toUpperCase()}
               </div>
             )}
-            <div className="truncate">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-slate-200 truncate">
                 {session.user.user_metadata?.full_name || session.user.email}
               </p>
-              <p className="text-[10px] text-emerald-400 font-medium">● Online</p>
+              <p className="text-[10px] text-emerald-400 font-medium">● Authenticated</p>
             </div>
           </div>
           <button
             onClick={handleSignOut}
             title="Sign Out"
-            className="text-slate-400 hover:text-red-400 text-xs p-1 transition"
+            className="text-slate-500 hover:text-red-400 text-xs p-1 transition shrink-0 ml-1"
           >
             ✕
           </button>
         </div>
       </div>
 
-      {/* MAIN BODY */}
+      {/* MAIN DASHBOARD */}
       <div className="flex-1 flex flex-col p-8 overflow-y-auto">
         {/* HEADER */}
         <div className="mb-6 flex justify-between items-start">
           <div>
             <h2 className="text-3xl font-bold text-white mb-1">Eco-Societal Digital Twin</h2>
             <p className="text-slate-400 text-sm">
-              Sentinel-5P HCHO Satellite Telemetry & Real-Time Policy Simulation
+              Sentinel-5P Satellite HCHO Telemetry & Scenario Analysis
             </p>
           </div>
 
           <div className="flex gap-3 items-center">
-            {/* EXPORT BUTTON */}
             <button
               onClick={exportToCSV}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 transition"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition"
             >
               <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -302,11 +290,10 @@ export default function VayuTwinDashboard() {
               Export CSV
             </button>
 
-            {/* VIEW MODE TOGGLE */}
-            <div className="flex bg-[#111827] border border-slate-800 p-1 rounded-md text-xs font-semibold">
+            <div className="flex bg-[#111827] border border-slate-800 p-1 rounded-lg text-xs font-semibold">
               <button
                 onClick={() => setViewMode('heatmap')}
-                className={`px-3 py-1.5 rounded transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition ${
                   viewMode === 'heatmap' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -314,7 +301,7 @@ export default function VayuTwinDashboard() {
               </button>
               <button
                 onClick={() => setViewMode('markers')}
-                className={`px-3 py-1.5 rounded transition-colors ${
+                className={`px-3 py-1.5 rounded-md transition ${
                   viewMode === 'markers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -324,14 +311,14 @@ export default function VayuTwinDashboard() {
           </div>
         </div>
 
-        {/* METRICS & SIMULATOR GRID */}
+        {/* METRICS & SIMULATION ROW */}
         <div className="grid grid-cols-4 gap-6 mb-6">
-          <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm">
-            <h3 className="text-xs font-medium text-slate-400 mb-1">Critical Hotspots (Original AQI &gt; 50)</h3>
+          <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm">
+            <h3 className="text-xs font-medium text-slate-400 mb-1">Critical Hotspots (AQI &gt; 50)</h3>
             <p className="text-3xl font-bold text-red-500">{criticalHotspots}</p>
           </div>
 
-          <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 shadow-sm flex flex-col justify-between">
+          <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
             <div>
               <h3 className="text-xs font-medium text-slate-400 mb-1">Active Focus Location</h3>
               <p className="text-2xl font-bold text-blue-400 truncate mb-1">
@@ -339,14 +326,12 @@ export default function VayuTwinDashboard() {
               </p>
             </div>
             <p className="text-[10px] text-slate-500">
-              {selectedCity ? 'Click city marker again to unselect' : 'Select city to inspect target'}
+              {selectedCity ? 'Click city marker again to zoom out' : 'Select any city to inspect target'}
             </p>
           </div>
 
-          {/* EXPOSURE CARD */}
           <ExposureCard selectedCity={activeSelectedCity} simulatedAqi={activeSelectedCity?.simulated_aqi} />
 
-          {/* POLICY SIMULATOR CARD */}
           <PolicySimulator
             trafficReduction={trafficReduction}
             setTrafficReduction={setTrafficReduction}
@@ -355,12 +340,11 @@ export default function VayuTwinDashboard() {
           />
         </div>
 
-        {/* MAP & CITY LIST SECTION */}
+        {/* MAP & SIDEBAR LIST */}
         <div className="flex gap-6 h-[420px] mb-6">
-          {/* LEAFLET MAP CONTAINER */}
-          <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm relative z-0">
-            {/* SLEEK MAP OVERLAY HUD */}
-            <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/85 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
+          {/* MAP */}
+          <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm relative z-0">
+            <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/90 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="font-semibold text-slate-200">
@@ -377,7 +361,6 @@ export default function VayuTwinDashboard() {
                 </button>
               )}
 
-              {/* Map Tile Style Switcher */}
               <div className="flex border-l border-slate-700 pl-3 gap-1">
                 <button
                   onClick={() => setMapStyle('dark')}
@@ -398,11 +381,9 @@ export default function VayuTwinDashboard() {
               </div>
             </div>
 
-            {/* LEAFLET CONTAINER */}
-            <div className="flex-1 rounded-md overflow-hidden border border-slate-800 relative">
+            <div className="flex-1 rounded-lg overflow-hidden border border-slate-800 relative">
               <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
-                <TileLayer url={tileUrl} attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
-
+                <TileLayer url={tileUrl} attribution='&copy; CARTO' />
                 <MapController selectedCity={selectedCity} />
 
                 {viewMode === 'heatmap' && <HeatmapLayer points={citiesWithSimulation} />}
@@ -416,9 +397,7 @@ export default function VayuTwinDashboard() {
                       key={c.city}
                       center={[c.lat, c.lng]}
                       radius={isSelected ? 14 : isCritical ? 10 : 7}
-                      eventHandlers={{
-                        click: () => handleCityClick(c),
-                      }}
+                      eventHandlers={{ click: () => handleCityClick(c) }}
                       pathOptions={{
                         color: isSelected ? '#38bdf8' : isCritical ? '#ef4444' : '#3b82f6',
                         fillColor: isSelected ? '#38bdf8' : isCritical ? '#ef4444' : '#3b82f6',
@@ -448,15 +427,12 @@ export default function VayuTwinDashboard() {
             </div>
           </div>
 
-          {/* SIDEBAR LOCATION LIST */}
-          <div className="flex-1 bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm">
+          {/* LOCATION LIST */}
+          <div className="flex-1 bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm">
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-semibold text-white">Location Database</h3>
               {selectedCity && (
-                <button
-                  onClick={resetMapView}
-                  className="text-[11px] text-blue-400 hover:text-blue-300 underline"
-                >
+                <button onClick={resetMapView} className="text-[11px] text-blue-400 hover:text-blue-300 underline">
                   Clear Selection
                 </button>
               )}
@@ -467,7 +443,7 @@ export default function VayuTwinDashboard() {
               placeholder="Search city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-md px-3 py-2 mb-3 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+              className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-blue-500 text-sm transition-colors"
             />
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
@@ -478,7 +454,7 @@ export default function VayuTwinDashboard() {
                   <div
                     key={city.city}
                     onClick={() => handleCityClick(city)}
-                    className={`p-3 rounded-md cursor-pointer transition-all border ${
+                    className={`p-3 rounded-lg cursor-pointer transition-all border ${
                       isSelected
                         ? 'bg-[#1e293b] border-blue-500 shadow-md ring-1 ring-blue-500/50'
                         : 'bg-[#0a0f1c]/50 border-transparent hover:bg-[#1e293b]'
@@ -511,8 +487,8 @@ export default function VayuTwinDashboard() {
           </div>
         </div>
 
-        {/* TIME-SERIES TREND CHART PANEL */}
-        <div className="bg-[#111827] border border-slate-800 rounded-lg p-5 h-64 shadow-sm shrink-0">
+        {/* TREND CHART */}
+        <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 h-64 shadow-sm shrink-0">
           <TrendChart cityName={selectedCity?.city} data={historyData} />
         </div>
       </div>
