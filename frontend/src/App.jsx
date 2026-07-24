@@ -1,157 +1,176 @@
-import MLOpsPipeline from './MLOpsPipeline';
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-export default function App() {
-  const [data, setData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
-  
-  // NEW: State to manage which tab is currently active
-  const [activeTab, setActiveTab] = useState("Live Hotspots");
+// --- 1. Helper Component for Smooth Map Zooming ---
+function FlyToCity({ center }) {
+  const map = useMap();
 
-  // 1. Fetch live data
+  useEffect(() => {
+    if (center) {
+      // flyTo([lat, lng], zoomLevel, options)
+      map.flyTo([center.lat, center.lng], 10, {
+        duration: 1.5,
+      });
+    }
+  }, [center, map]);
+
+  return null;
+}
+
+export default function VayuTwinDashboard() {
+  const [cities, setCities] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCity, setSelectedCity] = useState(null);
+
+  // --- 2. Fetch Live Data from your Render Backend ---
   useEffect(() => {
     fetch('https://vayu-twin-backend.onrender.com/data')
-      .then(res => res.json())
-      .then(json => {
-        setData(Array.isArray(json) ? json : []);
-        setLoading(false);
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          // Sort cities by AQI (highest first) for the sidebar
+          const sortedData = data.sort((a, b) => b.predicted_aqi - a.predicted_aqi);
+          setCities(sortedData);
+        }
       })
-      .catch(err => {
-        console.error("API error:", err);
-        setData([]); 
-        setLoading(false);
-      });
+      .catch((err) => console.error("Error fetching data:", err));
   }, []);
 
-  // 2. Universal Search Filter (Controls both the list AND the map)
-  const filteredData = (Array.isArray(data) ? data : []).filter(item => 
-    item && item.city && item.city.toLowerCase().includes(searchTerm.toLowerCase())
+  // --- 3. Filter & Calculate Metrics ---
+  const filteredCities = cities.filter((city) =>
+    city.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  // Assuming AQI > 50 is "Critical" for your HCHO metric context
+  const criticalHotspots = cities.filter((city) => city.predicted_aqi > 50).length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 p-6 border-r border-slate-800">
-        <h1 className="text-2xl font-bold mb-10 text-blue-500">VayuTwin</h1>
-        <nav className="space-y-4 cursor-pointer">
-          {/* Dynamic Sidebar Buttons */}
-          <div 
-            onClick={() => setActiveTab("Live Hotspots")}
-            className={`p-3 rounded transition-colors duration-200 ${activeTab === "Live Hotspots" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
-          >
+    <div className="flex h-screen bg-[#0a0f1c] text-slate-300 font-sans">
+      
+      {/* LEFT NAVIGATION SIDEBAR */}
+      <div className="w-64 bg-[#0a0f1c] border-r border-slate-800 p-6 flex flex-col">
+        <h1 className="text-2xl font-bold text-blue-500 mb-10">VayuTwin</h1>
+        <nav className="flex flex-col gap-2">
+          <button className="bg-blue-600 text-white text-left px-4 py-3 rounded-md font-medium transition">
             Live Hotspots
-          </div>
-          <div 
-            onClick={() => setActiveTab("MLOps Pipeline")}
-            className={`p-3 rounded transition-colors duration-200 ${activeTab === "MLOps Pipeline" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
-          >
+          </button>
+          <button className="text-slate-400 text-left px-4 py-3 rounded-md font-medium hover:bg-slate-800/50 transition">
             MLOps Pipeline
-          </div>
+          </button>
         </nav>
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
+      {/* MAIN DASHBOARD CONTENT */}
+      <div className="flex-1 flex flex-col p-8 overflow-y-auto">
         
-        {/* Conditional Rendering based on activeTab */}
-        {activeTab === "Live Hotspots" ? (
-          <>
-            <header className="mb-8">
-              <h1 className="text-3xl font-bold">HCHO Surface Concentration</h1>
-              <p className="text-slate-400">AI-Predicted AQI derived from Sentinel-5P VCD Satellite Data</p>
-            </header>
+        {/* Header section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white mb-2">HCHO Surface Concentration</h2>
+          <p className="text-slate-400">AI-Predicted AQI derived from Sentinel-5P VCD Satellite Data</p>
+        </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-6 mb-8">
-              <div className="bg-slate-900 p-6 rounded border border-slate-800">
-                <h3 className="text-slate-400">Critical Hotspots</h3>
-                <p className="text-4xl font-bold text-red-500">
-                  {filteredData.filter(d => d.predicted_aqi > 150).length}
-                </p>
-              </div>
-            </div>
+        {/* Critical Hotspots Card */}
+        <div className="bg-[#111827] border border-slate-800 rounded-lg p-6 mb-8 w-1/3 shadow-sm">
+          <h3 className="text-sm font-medium text-slate-400 mb-2">Critical Hotspots</h3>
+          <p className="text-4xl font-bold text-red-500">{criticalHotspots}</p>
+        </div>
 
-            <div className="grid grid-cols-3 gap-8">
-              
-              {/* Live Geospatial Map */}
-              <div className="col-span-2 bg-slate-900 p-6 rounded border border-slate-800" style={{ height: '500px' }}>
-                <h2 className="mb-4 font-bold">Live HCHO Heatmap (India)</h2>
-                <div className="w-full h-[400px] rounded overflow-hidden border border-slate-800 relative z-0">
-                  <MapContainer 
-                    center={[22.5937, 78.9629]} 
-                    zoom={4} 
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                      attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    />
-                    
-                    {/* The map now loops over 'filteredData' instead of raw 'data' */}
-                    {filteredData.map((city, idx) => (
-                      <CircleMarker
-                        key={idx}
-                        center={[city.lat, city.lng]}
-                        pathOptions={{ 
-                          color: city.predicted_aqi > 150 ? '#ef4444' : city.predicted_aqi > 100 ? '#f97316' : '#22c55e',
-                          fillColor: city.predicted_aqi > 150 ? '#ef4444' : city.predicted_aqi > 100 ? '#f97316' : '#22c55e',
-                          fillOpacity: 0.6
-                        }}
-                        radius={city.predicted_aqi > 100 ? 20 : 12}
-                      >
-                        <Popup>
-                          <div className="text-slate-900 text-sm">
-                            <strong className="text-lg">{city.city}</strong><br/>
-                            Predicted AQI: <strong>{city.predicted_aqi}</strong><br/>
-                            Temperature: {city.temp_c}°C
-                          </div>
-                        </Popup>
-                      </CircleMarker>
-                    ))}
-                  </MapContainer>
-                </div>
-              </div>
-
-              {/* Highest Risk Zones (Searchable) */}
-              <div className="bg-slate-900 p-6 rounded border border-slate-800 flex flex-col" style={{ height: '500px' }}>
-                <h2 className="mb-4 font-bold">Highest Risk Zones</h2>
-                
-                <input 
-                  type="text" 
-                  placeholder="Search city..." 
-                  className="w-full p-2 mb-4 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500"
-                  onChange={(e) => setSearchTerm(e.target.value)}
+        {/* Map & List Container */}
+        <div className="flex gap-6 h-[500px]">
+          
+          {/* MAP CARD */}
+          <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm relative z-0">
+            <h3 className="text-sm font-semibold text-white mb-4">Live HCHO Heatmap (India)</h3>
+            <div className="flex-1 rounded-md overflow-hidden rounded border border-slate-800">
+              <MapContainer
+                center={[22.5937, 78.9629]} // Center of India
+                zoom={4.5}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
                 />
+                
+                <FlyToCity center={selectedCity} />
 
-                <div className="space-y-3 overflow-y-auto flex-1 pr-2">
-                  {loading ? (
-                    <p>Loading data...</p>
-                  ) : filteredData.length > 0 ? (
-                    filteredData.map(city => (
-                      <div key={city.city} className="flex justify-between p-3 bg-slate-950 rounded border border-slate-800">
-                        <span>{city.city}</span>
-                        <span className={city.predicted_aqi > 150 ? "text-red-400" : "text-green-400"}>
-                          {city.predicted_aqi} AQI
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-slate-500">No cities found.</p>
-                  )}
-                </div>
-              </div>
+                {cities.map((c) => (
+                  <CircleMarker
+                    key={c.city}
+                    center={[c.lat, c.lng]}
+                    radius={c.predicted_aqi > 50 ? 12 : 8}
+                    pathOptions={{
+                      color: c.predicted_aqi > 50 ? '#ef4444' : '#3b82f6',
+                      fillColor: c.predicted_aqi > 50 ? '#ef4444' : '#3b82f6',
+                      fillOpacity: 0.6,
+                      weight: 2
+                    }}
+                  >
+                    <Popup className="text-slate-900 font-sans">
+                      <div className="font-bold text-base mb-1">{c.city}</div>
+                      <div className="text-sm"><strong>AQI:</strong> {c.predicted_aqi}</div>
+                      <div className="text-sm"><strong>HCHO VCD:</strong> {c.vcd_mol_m2} mol/m²</div>
+                      <div className="text-sm"><strong>Temp:</strong> {c.temp_c}°C</div>
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
             </div>
-          </>
-        ) : (
-          <div className="flex justify-center items-start pt-10">
-            {/* Renders your new Pipeline Architecture component */}
-            <MLOpsPipeline />
           </div>
-        )}
-      </main>
+
+          {/* HIGHEST RISK ZONES SIDEBAR */}
+          <div className="flex-1 bg-[#111827] border border-slate-800 rounded-lg p-4 flex flex-col shadow-sm">
+            <h3 className="text-sm font-semibold text-white mb-4">Highest Risk Zones</h3>
+            
+            <input
+              type="text"
+              placeholder="Search city..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-md px-3 py-2 mb-4 focus:outline-none focus:border-blue-500 transition-colors"
+            />
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              {filteredCities.length === 0 ? (
+                <p className="text-slate-500 text-sm">No cities found.</p>
+              ) : (
+                filteredCities.map((city) => (
+                  <div
+                    key={city.city}
+                    onClick={() => setSelectedCity({ lat: city.lat, lng: city.lng })}
+                    className={`p-3 rounded-md cursor-pointer transition-colors border ${
+                      selectedCity?.lat === city.lat
+                        ? 'bg-[#1e293b] border-blue-500/50'
+                        : 'bg-[#0a0f1c]/50 border-transparent hover:bg-[#1e293b]'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium text-slate-200">{city.city}</span>
+                      <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                        city.predicted_aqi > 50 
+                          ? 'bg-red-500/20 text-red-400' 
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        AQI {city.predicted_aqi}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-slate-500">
+                        {city.vcd_mol_m2} mol/m²
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {city.temp_c}°C
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
