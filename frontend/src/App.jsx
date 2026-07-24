@@ -27,23 +27,23 @@ function MapController({ selectedCity }) {
   return null;
 }
 
-// VayuTwin Logo Icon
+// VayuTwin Logo Icon Component
 function VayuTwinLogo() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/20 shrink-0">
-        <div className="w-full h-full bg-[#0a0f1c] rounded-[10px] flex items-center justify-center">
-          <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-cyan-500 to-indigo-600 p-0.5 shadow-md shadow-blue-500/20 shrink-0">
+        <div className="w-full h-full bg-[#0a0f1c] rounded-[6px] flex items-center justify-center">
+          <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 002.5-2.5V14M12 21a9 9 0 100-18 9 9 0 000 18z" />
           </svg>
         </div>
       </div>
       <div>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-white via-slate-100 to-blue-400 bg-clip-text text-transparent leading-none">
+        <h1 className="text-lg font-bold bg-gradient-to-r from-white via-slate-100 to-blue-400 bg-clip-text text-transparent leading-none">
           VayuTwin
         </h1>
-        <span className="text-[10px] text-cyan-400 font-semibold tracking-wider uppercase">
-          AI Digital Twin
+        <span className="text-[9px] text-cyan-400 font-semibold tracking-wider uppercase">
+          Atmospheric Twin
         </span>
       </div>
     </div>
@@ -178,7 +178,7 @@ export default function App() {
 
   if (loadingAuth) {
     return (
-      <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center">
+      <div className="h-screen bg-[#0a0f1c] text-white flex items-center justify-center font-sans">
         <p className="text-slate-400 font-medium">Authenticating VayuTwin Console...</p>
       </div>
     );
@@ -193,7 +193,7 @@ export default function App() {
           </div>
 
           <p className="text-slate-400 text-sm mb-8">
-            Atmospheric Digital Twin & Policy Impact Platform
+            Eco-Societal Air Quality Digital Twin Platform
           </p>
 
           <button
@@ -219,103 +219,88 @@ export default function App() {
       : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
   return (
-    <div className="flex h-screen bg-[#0a0f1c] text-slate-300 overflow-hidden">
-      {/* SIDEBAR */}
-      <div className="w-64 bg-[#0a0f1c] border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
-        <div>
-          <div className="mb-8">
-            <VayuTwinLogo />
+    <div className="flex flex-col h-screen bg-[#0a0f1c] text-slate-300 overflow-hidden font-sans">
+      {/* TOP WIDESCREEN NAVIGATION HEADER */}
+      <header className="bg-[#111827] border-b border-slate-800 px-8 py-3 flex justify-between items-center shrink-0 z-10">
+        <div className="flex items-center gap-6">
+          <VayuTwinLogo />
+          
+          <div className="h-5 w-[1px] bg-slate-800 hidden md:block"></div>
+          
+          <div className="hidden md:flex items-center gap-3">
+            <span className="text-xs font-semibold text-slate-300">Eco-Societal Control Center</span>
+            <span className="text-[10px] px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-semibold rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Sentinel-5P Satellite Active
+            </span>
           </div>
-
-          <nav className="flex flex-col gap-2">
-            <button className="bg-blue-600 text-white text-left px-4 py-2.5 rounded-lg font-medium text-sm transition">
-              Live Hotspots
-            </button>
-            <button className="text-slate-400 text-left px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-slate-800/50 transition">
-              MLOps Pipeline
-            </button>
-          </nav>
         </div>
 
-        {/* PROFILE FOOTER */}
-        <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* HEADER RIGHT ACTION CONTROLS */}
+        <div className="flex items-center gap-4">
+          <div className="flex bg-[#0a0f1c] border border-slate-800 p-1 rounded-lg text-xs font-semibold">
+            <button
+              onClick={() => setViewMode('heatmap')}
+              className={`px-3 py-1 rounded-md transition ${
+                viewMode === 'heatmap' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Heatmap Surface
+            </button>
+            <button
+              onClick={() => setViewMode('markers')}
+              className={`px-3 py-1 rounded-md transition ${
+                viewMode === 'markers' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Station Markers
+            </button>
+          </div>
+
+          <button
+            onClick={exportToCSV}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export CSV
+          </button>
+
+          <div className="h-5 w-[1px] bg-slate-800"></div>
+
+          {/* USER AVATAR & SIGN OUT */}
+          <div className="flex items-center gap-2.5">
             {session.user.user_metadata?.avatar_url ? (
               <img
                 src={session.user.user_metadata.avatar_url}
                 alt="User"
-                className="w-8 h-8 rounded-full border border-blue-500/30 shrink-0"
+                className="w-7 h-7 rounded-full border border-blue-500/30"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white shrink-0">
+              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
                 {session.user.email?.[0].toUpperCase()}
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-200 truncate">
-                {session.user.user_metadata?.full_name || session.user.email}
-              </p>
-              <p className="text-[10px] text-emerald-400 font-medium">● Authenticated</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSignOut}
-            title="Sign Out"
-            className="text-slate-500 hover:text-red-400 text-xs p-1 transition shrink-0 ml-1"
-          >
-            ✕
-          </button>
-        </div>
-      </div>
-
-      {/* MAIN DASHBOARD */}
-      <div className="flex-1 flex flex-col p-8 overflow-y-auto">
-        {/* HEADER */}
-        <div className="mb-6 flex justify-between items-start">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-1">Eco-Societal Digital Twin</h2>
-            <p className="text-slate-400 text-sm">
-              Sentinel-5P Satellite HCHO Telemetry & Scenario Analysis
-            </p>
-          </div>
-
-          <div className="flex gap-3 items-center">
             <button
-              onClick={exportToCSV}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition"
+              onClick={handleSignOut}
+              title="Sign Out"
+              className="text-slate-500 hover:text-red-400 text-xs transition"
             >
-              <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export CSV
+              Sign Out
             </button>
-
-            <div className="flex bg-[#111827] border border-slate-800 p-1 rounded-lg text-xs font-semibold">
-              <button
-                onClick={() => setViewMode('heatmap')}
-                className={`px-3 py-1.5 rounded-md transition ${
-                  viewMode === 'heatmap' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Heatmap Surface
-              </button>
-              <button
-                onClick={() => setViewMode('markers')}
-                className={`px-3 py-1.5 rounded-md transition ${
-                  viewMode === 'markers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Station Markers
-              </button>
-            </div>
           </div>
         </div>
+      </header>
 
-        {/* METRICS & SIMULATION ROW */}
-        <div className="grid grid-cols-4 gap-6 mb-6">
+      {/* DASHBOARD BODY (FULL WIDTH) */}
+      <div className="flex-1 flex flex-col p-6 overflow-y-auto space-y-6">
+        {/* METRICS & POLICY SIMULATOR ROW */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm">
             <h3 className="text-xs font-medium text-slate-400 mb-1">Critical Hotspots (AQI &gt; 50)</h3>
             <p className="text-3xl font-bold text-red-500">{criticalHotspots}</p>
+            <p className="text-[11px] text-slate-500 mt-2">Active high-risk geographic clusters</p>
           </div>
 
           <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
@@ -340,15 +325,15 @@ export default function App() {
           />
         </div>
 
-        {/* MAP & SIDEBAR LIST */}
-        <div className="flex gap-6 h-[420px] mb-6">
-          {/* MAP CONTAINER (zoomControl={false} hides the + / - buttons) */}
+        {/* MAP & RICH LOCATION DATABASE */}
+        <div className="flex gap-6 h-[440px]">
+          {/* LEAFLET MAP CONTAINER */}
           <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm relative z-0">
             <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/90 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="font-semibold text-slate-200">
-                  {selectedCity ? selectedCity.city : 'National Grid'}
+                  {selectedCity ? selectedCity.city : 'National Grid View'}
                 </span>
               </div>
 
@@ -432,26 +417,26 @@ export default function App() {
             </div>
           </div>
 
-          {/* LOCATION LIST */}
+          {/* RICH LOCATION DATABASE PANEL */}
           <div className="flex-1 bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-semibold text-white">Location Database</h3>
+              <h3 className="text-sm font-semibold text-white">Location Database & Telemetry</h3>
               {selectedCity && (
                 <button onClick={resetMapView} className="text-[11px] text-blue-400 hover:text-blue-300 underline">
-                  Clear Selection
+                  Clear Focus
                 </button>
               )}
             </div>
 
             <input
               type="text"
-              placeholder="Search city..."
+              placeholder="Search city location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-blue-500 text-sm transition-colors"
             />
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
               {filteredCities.map((city) => {
                 const isSelected = selectedCity?.city === city.city;
 
@@ -466,8 +451,12 @@ export default function App() {
                     }`}
                   >
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-medium text-slate-200">{city.city}</span>
-                      {isSelected && <span className="text-[10px] text-blue-400 font-semibold">Active Focus</span>}
+                      <span className="font-semibold text-slate-100 text-sm">{city.city}</span>
+                      {isSelected ? (
+                        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Active</span>
+                      ) : (
+                        <span className="text-[11px] text-slate-500">{city.temp_c}°C</span>
+                      )}
                     </div>
 
                     <div className="flex gap-2 mb-2">
@@ -479,11 +468,9 @@ export default function App() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs text-slate-500">
-                      <span>{city.vcd_mol_m2} mol/m²</span>
-                      <span>
-                        {city.population ? `${(city.population / 1000000).toFixed(1)}M pop` : `${city.temp_c}°C`}
-                      </span>
+                    <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/60 pt-2 mt-1">
+                      <span>Density: {city.vcd_mol_m2} mol/m²</span>
+                      <span>Pop: {city.population ? `${(city.population / 1000000).toFixed(1)}M` : 'N/A'}</span>
                     </div>
                   </div>
                 );
@@ -492,7 +479,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* TREND CHART */}
+        {/* TIME-SERIES TREND CHART PANEL */}
         <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 h-64 shadow-sm shrink-0">
           <TrendChart cityName={selectedCity?.city} data={historyData} />
         </div>
