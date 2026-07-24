@@ -1,156 +1,132 @@
 import os
-import time
 import logging
 import requests
-import json
+import joblib
 import pandas as pd
-import numpy as np
-from datetime import datetime
-from sklearn.ensemble import RandomForestRegressor
 from supabase import create_client, Client
 
-# Configure logging
+# Configure Logging to match your previous terminal output
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(levelname)s] - %(message)s')
+logger = logging.getLogger(__name__)
 
-class VayuTwinPipeline:
-    def __init__(self):
-        self.supabase_url = os.environ.get("SUPABASE_URL")
-        self.supabase_key = os.environ.get("SUPABASE_KEY")
-        self.supabase: Client = None
+# --- Configuration ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wgjhlozrllqhdqaogcbx.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indnamhsb3pybGxxaGRxYW9nY2J4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDg2OTI1NiwiZXhwIjoyMTAwNDQ1MjU2fQ.CvSvNuPHZU1iWxplhGQMntKlwsZvyi_2um3xzQEZsXk")
 
-        if self.supabase_url and self.supabase_key:
-            try:
-                self.supabase = create_client(self.supabase_url, self.supabase_key)
-                logging.info("Successfully connected to Supabase client.")
-            except Exception as e:
-                logging.error(f"Failed to initialize Supabase client: {e}")
-        else:
-            logging.warning("SUPABASE_URL or SUPABASE_KEY missing in environment.")
+def get_risk_level(aqi):
+    """Categorize AQI into standard risk levels."""
+    if aqi <= 50: return "Good"
+    elif aqi <= 100: return "Moderate"
+    elif aqi <= 150: return "Unhealthy for Sensitive Groups"
+    elif aqi <= 200: return "Unhealthy"
+    elif aqi <= 300: return "Very Unhealthy"
+    else: return "Hazardous"
 
-        self.model = self._mock_load_model()
+def main():
+    logger.info("Initiating VayuTwin Dynamic CronJob...")
 
-    def _mock_load_model(self):
-        logging.info("Loading Random Forest HCHO-to-AQI model...")
-        time.sleep(1)
-        return RandomForestRegressor(n_estimators=100, random_state=42)
+    # 1. Initialize Supabase Client
+    if not SUPABASE_URL or not SUPABASE_KEY or SUPABASE_KEY == "YOUR_SUPABASE_KEY":
+        logger.error("Supabase credentials missing! Export SUPABASE_URL and SUPABASE_KEY.")
+        return
 
-    def fetch_target_cities(self):
-        """Dynamically fetches all monitoring targets from Supabase database."""
-        if not self.supabase:
-            logging.warning("No Supabase client available. Using local fallback target.")
-            return [{"city": "Delhi", "lat": 28.6139, "lng": 77.2090}]
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    logger.info("Successfully connected to Supabase client.")
 
-        try:
-            logging.info("Fetching target cities dynamically from Supabase `target_cities` table...")
-            response = self.supabase.table("target_cities").select("city, lat, lng").execute()
-            cities = response.data
+    # 2. Load ML Model
+    logger.info("Loading Random Forest HCHO-to-AQI model...")
+    try:
+        # Update this path if your model file is named differently
+        model = joblib.load("model.pkl") 
+    except FileNotFoundError:
+        logger.warning("model.pkl not found! Using a fallback dummy model for demonstration.")
+        model = None
 
-            if not cities:
-                logging.warning("`target_cities` table returned 0 rows!")
-                return []
-
-            logging.info(f"Loaded {len(cities)} monitoring locations dynamically from DB.")
-            return cities
-
-        except Exception as e:
-            logging.error(f"Error querying `target_cities` table: {e}")
-            return []
-
-    def ingest_satellite_data(self, cities):
-        if not cities:
-            logging.error("No cities provided for data ingestion.")
-            return pd.DataFrame()
-
-        logging.info(f"Connecting to Open-Meteo telemetry for {len(cities)} target locations...")
-        data = []
-
-        for item in cities:
-            city_name = item["city"]
-            lat = item["lat"]
-            lng = item["lng"]
-
-            try:
-                url = f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lng}&current=aerosol_optical_depth,nitrogen_dioxide"
-                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m"
-
-                aq_response = requests.get(url, timeout=10)
-                weather_response = requests.get(weather_url, timeout=10)
-
-                no2 = aq_response.json()['current'].get('nitrogen_dioxide', 0.0001)
-                temp = weather_response.json()['current'].get('temperature_2m', 25.0)
-                humidity = weather_response.json()['current'].get('relative_humidity_2m', 50.0)
-
-                vcd_proxy = (no2 / 1000) if no2 else 0.0001
-                logging.info(f"Pulled live data for {city_name}: Temp {temp}°C")
-
-                data.append({
-                    "city": city_name,
-                    "lat": lat,
-                    "lng": lng,
-                    "vcd_mol_m2": round(vcd_proxy, 6),
-                    "temp_c": temp,
-                    "humidity": humidity
-                })
-                time.sleep(0.3)
-
-            except Exception as e:
-                logging.error(f"Failed to fetch live data for {city_name}: {e}")
-
-        return pd.DataFrame(data)
-
-    def run_inference(self, df):
-        if df.empty:
-            return df
-
-        df['predicted_aqi'] = ((df['vcd_mol_m2'] * 1000) + (df['temp_c'] * 0.5)).astype(int)
-        df['risk_level'] = pd.cut(
-            df['predicted_aqi'], 
-            bins=[-1, 50, 100, 150, 500], 
-            labels=['Good', 'Moderate', 'Unhealthy', 'Hazardous']
-        )
-        return df
-
-    def save_to_supabase(self, records):
-        if not self.supabase or not records:
+    # 3. Fetch Target Cities
+    logger.info("Fetching target cities dynamically from Supabase `target_cities` table...")
+    try:
+        cities_response = supabase.table("target_cities").select("city,lat,lng").execute()
+        target_cities = cities_response.data
+        if not target_cities:
+            logger.error("No cities found in `target_cities` table.")
             return
+        logger.info(f"Loaded {len(target_cities)} monitoring locations dynamically from DB.")
+    except Exception as e:
+        logger.error(f"Failed to fetch cities: {e}")
+        return
+
+    # 4. Process Telemetry for Each City
+    logger.info(f"Connecting to Open-Meteo telemetry for {len(target_cities)} target locations...")
+    
+    records_to_insert = []
+    
+    print("\n--- LIVE PREDICTED HOTSPOTS ---")
+    
+    for city_data in target_cities:
+        city_name = city_data["city"]
+        lat = city_data["lat"]
+        lng = city_data["lng"]
 
         try:
-            logging.info(f"Upserting {len(records)} city predictions into Supabase `city_records`...")
-            response = self.supabase.table("city_records").upsert(
-                records, 
-                on_conflict="city"
-            ).execute()
-            logging.info("Successfully updated Supabase database!")
+            # A. Fetch Weather Telemetry
+            weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,relative_humidity_2m"
+            w_res = requests.get(weather_url).json()
+            temp_c = w_res.get("current", {}).get("temperature_2m", 25.0)
+            humidity = w_res.get("current", {}).get("relative_humidity_2m", 50.0)
+
+            # B. Fetch Real-World AQI (New Addition)
+            aqi_url = f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lng}&current=european_aqi"
+            aqi_res = requests.get(aqi_url).json()
+            real_aqi = aqi_res.get("current", {}).get("european_aqi", 50)
+
+            # C. Extract/Calculate HCHO VCD 
+            # (Replace this placeholder logic with your actual GEE/Copernicus extraction if needed)
+            vcd_mol_m2 = 0.000142 + (temp_c * 0.000001) 
+
+            # D. Model Inference
+            if model:
+                # Format features as your model expects (e.g., a DataFrame)
+                features = pd.DataFrame([[temp_c, humidity, vcd_mol_m2]], columns=["temp_c", "humidity", "vcd_mol_m2"])
+                predicted_aqi = int(model.predict(features)[0])
+            else:
+                # Fallback calculation if model.pkl is missing
+                predicted_aqi = int((temp_c * 0.5) + (humidity * 0.1) + 5)
+
+            risk_level = get_risk_level(predicted_aqi)
+
+            logger.info(f"Pulled live data for {city_name}: Temp {temp_c}°C")
+            print(f"[{risk_level}] {city_name}: AI AQI {predicted_aqi} | Real AQI {real_aqi} (Temp: {temp_c}°C)")
+
+            # E. Append to Supabase Payload
+            records_to_insert.append({
+                "city": city_name,
+                "lat": lat,
+                "lng": lng,
+                "temp_c": temp_c,
+                "humidity": humidity,
+                "vcd_mol_m2": round(vcd_mol_m2, 6),
+                "predicted_aqi": predicted_aqi,
+                "original_aqi": real_aqi,
+                "risk_level": risk_level
+            })
+
         except Exception as e:
-            logging.error(f"Error saving predictions to Supabase: {e}")
+            logger.error(f"Error processing {city_name}: {e}")
+            
+    print("-------------------------------\n")
+
+    # 5. Upsert into Supabase
+    logger.info(f"Upserting {len(records_to_insert)} city predictions into Supabase `city_records`...")
+    try:
+        # Note: We use upsert with on_conflict='city' so it updates existing rows instead of crashing
+        response = supabase.table("city_records").upsert(
+            records_to_insert, 
+            on_conflict="city"
+        ).execute()
+        
+        logger.info("Pipeline execution complete! Written to database.")
+    except Exception as e:
+        logger.error(f"Error saving predictions to Supabase: {e}")
 
 if __name__ == "__main__":
-    logging.info("Initiating VayuTwin Dynamic CronJob...")
-    pipeline = VayuTwinPipeline()
-
-    # 1. Pull cities dynamically from DB
-    target_cities = pipeline.fetch_target_cities()
-
-    # 2. Ingest telemetry and run model inference
-    raw_data = pipeline.ingest_satellite_data(target_cities)
-    processed_data = pipeline.run_inference(raw_data)
-
-    if not processed_data.empty:
-        print("\n--- LIVE PREDICTED HOTSPOTS ---")
-        for index, row in processed_data.iterrows():
-            print(f"[{row['risk_level']}] {row['city']}: AQI {row['predicted_aqi']} (Temp: {row['temp_c']}°C)")
-        print("-------------------------------\n")
-
-        # Format types for serialization
-        processed_data['risk_level'] = processed_data['risk_level'].astype(str)
-        processed_data = processed_data.fillna("Unknown")
-
-        records = processed_data.to_dict(orient='records')
-
-        # 3. Write predictions back to Supabase + local backup
-        pipeline.save_to_supabase(records)
-
-        with open('data.json', 'w') as f:
-            json.dump(records, f)
-
-        logging.info("Pipeline execution complete! Written to database.")
+    main()
