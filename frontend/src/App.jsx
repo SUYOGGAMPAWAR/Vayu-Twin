@@ -186,7 +186,7 @@ export default function App() {
 
   if (!session) {
     return (
-      <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center p-4">
+      <div className="h-screen bg-[#0a0f1c] text-slate-200 flex flex-col items-center justify-center p-4 font-sans">
         <div className="bg-[#111827] border border-slate-800 p-8 rounded-2xl max-w-md w-full shadow-2xl text-center">
           <div className="flex justify-center mb-6">
             <VayuTwinLogo />
@@ -221,15 +221,15 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-[#0a0f1c] text-slate-300 overflow-hidden font-sans">
       {/* TOP WIDESCREEN NAVIGATION HEADER */}
-      <header className="bg-[#111827] border-b border-slate-800 px-8 py-3 flex justify-between items-center shrink-0 z-10">
-        <div className="flex items-center gap-6">
+      <header className="bg-[#111827] border-b border-slate-800 px-6 py-2 flex justify-between items-center shrink-0 z-10">
+        <div className="flex items-center gap-5">
           <VayuTwinLogo />
           
-          <div className="h-5 w-[1px] bg-slate-800 hidden md:block"></div>
+          <div className="h-4 w-[1px] bg-slate-800 hidden md:block"></div>
           
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2.5">
             <span className="text-xs font-semibold text-slate-300">Eco-Societal Control Center</span>
-            <span className="text-[10px] px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-semibold rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+            <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 font-semibold rounded-full border border-emerald-500/20 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Sentinel-5P Satellite Active
             </span>
@@ -237,29 +237,29 @@ export default function App() {
         </div>
 
         {/* HEADER RIGHT ACTION CONTROLS */}
-        <div className="flex items-center gap-4">
-          <div className="flex bg-[#0a0f1c] border border-slate-800 p-1 rounded-lg text-xs font-semibold">
+        <div className="flex items-center gap-3">
+          <div className="flex bg-[#0a0f1c] border border-slate-800 p-0.5 rounded-lg text-xs font-semibold">
             <button
               onClick={() => setViewMode('heatmap')}
-              className={`px-3 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition ${
                 viewMode === 'heatmap' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Heatmap Surface
+              Heatmap
             </button>
             <button
               onClick={() => setViewMode('markers')}
-              className={`px-3 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-md transition ${
                 viewMode === 'markers' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Station Markers
+              Markers
             </button>
           </div>
 
           <button
             onClick={exportToCSV}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
           >
             <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -267,18 +267,18 @@ export default function App() {
             Export CSV
           </button>
 
-          <div className="h-5 w-[1px] bg-slate-800"></div>
+          <div className="h-4 w-[1px] bg-slate-800"></div>
 
           {/* USER AVATAR & SIGN OUT */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {session.user.user_metadata?.avatar_url ? (
               <img
                 src={session.user.user_metadata.avatar_url}
                 alt="User"
-                className="w-7 h-7 rounded-full border border-blue-500/30"
+                className="w-6 h-6 rounded-full border border-blue-500/30"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
+              <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center font-bold text-[10px] text-white">
                 {session.user.email?.[0].toUpperCase()}
               </div>
             )}
@@ -293,71 +293,75 @@ export default function App() {
         </div>
       </header>
 
-      {/* DASHBOARD BODY (FULL WIDTH) */}
-      <div className="flex-1 flex flex-col p-6 overflow-y-auto space-y-6">
-        {/* METRICS & POLICY SIMULATOR ROW */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm">
-            <h3 className="text-xs font-medium text-slate-400 mb-1">Critical Hotspots (AQI &gt; 50)</h3>
-            <p className="text-3xl font-bold text-red-500">{criticalHotspots}</p>
-            <p className="text-[11px] text-slate-500 mt-2">Active high-risk geographic clusters</p>
+      {/* DASHBOARD BODY (FULL SCREEN FLEX LAYOUT) */}
+      <div className="flex-1 flex flex-col p-3 overflow-hidden gap-2.5">
+        
+        {/* ROW 1: ULTRA-COMPACT METRICS & SIMULATOR GRID */}
+        <div className="grid grid-cols-12 gap-2.5 shrink-0 min-h-[115px]">
+          <div className="col-span-2 bg-[#111827] border border-slate-800 rounded-xl p-3 shadow-sm flex flex-col justify-between">
+            <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Hotspots (&gt;50 AQI)</h3>
+            <p className="text-2xl font-bold text-red-500">{criticalHotspots}</p>
+            <span className="text-[9px] text-slate-500">Critical zones</span>
           </div>
 
-          <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-            <div>
-              <h3 className="text-xs font-medium text-slate-400 mb-1">Active Focus Location</h3>
-              <p className="text-2xl font-bold text-blue-400 truncate mb-1">
-                {selectedCity?.city || 'National Overview'}
-              </p>
-            </div>
-            <p className="text-[10px] text-slate-500">
-              {selectedCity ? 'Click city marker again to zoom out' : 'Select any city to inspect target'}
+          <div className="col-span-2 bg-[#111827] border border-slate-800 rounded-xl p-3 shadow-sm flex flex-col justify-between">
+            <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Active Target</h3>
+            <p className="text-lg font-bold text-blue-400 truncate">
+              {selectedCity?.city || 'National Grid'}
             </p>
+            <span className="text-[9px] text-slate-500">
+              {selectedCity ? 'Click again to zoom out' : 'Select city on map'}
+            </span>
           </div>
 
-          <ExposureCard selectedCity={activeSelectedCity} simulatedAqi={activeSelectedCity?.simulated_aqi} />
+          <div className="col-span-4">
+            <ExposureCard selectedCity={activeSelectedCity} simulatedAqi={activeSelectedCity?.simulated_aqi} />
+          </div>
 
-          <PolicySimulator
-            trafficReduction={trafficReduction}
-            setTrafficReduction={setTrafficReduction}
-            industrialReduction={industrialReduction}
-            setIndustrialReduction={setIndustrialReduction}
-          />
+          <div className="col-span-4">
+            <PolicySimulator
+              trafficReduction={trafficReduction}
+              setTrafficReduction={setTrafficReduction}
+              industrialReduction={industrialReduction}
+              setIndustrialReduction={setIndustrialReduction}
+            />
+          </div>
         </div>
 
-        {/* MAP & RICH LOCATION DATABASE */}
-        <div className="flex gap-6 h-[440px]">
+        {/* ROW 2: MAP & CITY DATABASE (flex-1 dynamically expands map to fill vertical height) */}
+        <div className="flex gap-2.5 flex-1 min-h-0">
+          
           {/* LEAFLET MAP CONTAINER */}
-          <div className="flex-[2] bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm relative z-0">
-            <div className="absolute top-6 left-6 z-[1000] bg-[#0a0f1c]/90 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 shadow-lg flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-2">
+          <div className="flex-[3] bg-[#111827] border border-slate-800 rounded-xl p-2 flex flex-col shadow-sm relative z-0">
+            <div className="absolute top-3 left-3 z-[1000] bg-[#0a0f1c]/90 backdrop-blur-md border border-slate-700/80 rounded-lg px-2.5 py-1 shadow-lg flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="font-semibold text-slate-200">
-                  {selectedCity ? selectedCity.city : 'National Grid View'}
+                  {selectedCity ? selectedCity.city : 'National Overview'}
                 </span>
               </div>
 
               {selectedCity && (
                 <button
                   onClick={resetMapView}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-2 py-1 rounded text-[11px] transition shadow"
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-2 py-0.5 rounded text-[10px] transition shadow"
                 >
                   🎯 Recenter Map
                 </button>
               )}
 
-              <div className="flex border-l border-slate-700 pl-3 gap-1">
+              <div className="flex border-l border-slate-700 pl-2 gap-1">
                 <button
                   onClick={() => setMapStyle('dark')}
-                  className={`px-2 py-0.5 rounded text-[10px] ${
+                  className={`px-1.5 py-0.5 rounded text-[10px] ${
                     mapStyle === 'dark' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Cyber Dark
+                  Dark
                 </button>
                 <button
                   onClick={() => setMapStyle('satellite')}
-                  className={`px-2 py-0.5 rounded text-[10px] ${
+                  className={`px-1.5 py-0.5 rounded text-[10px] ${
                     mapStyle === 'satellite' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -417,12 +421,12 @@ export default function App() {
             </div>
           </div>
 
-          {/* RICH LOCATION DATABASE PANEL */}
-          <div className="flex-1 bg-[#111827] border border-slate-800 rounded-xl p-4 flex flex-col shadow-sm">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-semibold text-white">Location Database & Telemetry</h3>
+          {/* LOCATION DATABASE SIDEBAR */}
+          <div className="flex-1 bg-[#111827] border border-slate-800 rounded-xl p-2.5 flex flex-col shadow-sm">
+            <div className="flex justify-between items-center mb-1.5">
+              <h3 className="text-xs font-semibold text-white">Location Database</h3>
               {selectedCity && (
-                <button onClick={resetMapView} className="text-[11px] text-blue-400 hover:text-blue-300 underline">
+                <button onClick={resetMapView} className="text-[10px] text-blue-400 hover:text-blue-300 underline">
                   Clear Focus
                 </button>
               )}
@@ -433,10 +437,10 @@ export default function App() {
               placeholder="Search city location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-blue-500 text-sm transition-colors"
+              className="w-full bg-[#1e293b] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 mb-2 focus:outline-none focus:border-blue-500 text-xs transition-colors"
             />
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
               {filteredCities.map((city) => {
                 const isSelected = selectedCity?.city === city.city;
 
@@ -444,31 +448,31 @@ export default function App() {
                   <div
                     key={city.city}
                     onClick={() => handleCityClick(city)}
-                    className={`p-3 rounded-lg cursor-pointer transition-all border ${
+                    className={`p-2 rounded-lg cursor-pointer transition-all border ${
                       isSelected
                         ? 'bg-[#1e293b] border-blue-500 shadow-md ring-1 ring-blue-500/50'
                         : 'bg-[#0a0f1c]/50 border-transparent hover:bg-[#1e293b]'
                     }`}
                   >
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-semibold text-slate-100 text-sm">{city.city}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-slate-100 text-xs">{city.city}</span>
                       {isSelected ? (
-                        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Active</span>
+                        <span className="text-[9px] text-blue-400 font-bold uppercase">Active</span>
                       ) : (
-                        <span className="text-[11px] text-slate-500">{city.temp_c}°C</span>
+                        <span className="text-[10px] text-slate-500">{city.temp_c}°C</span>
                       )}
                     </div>
 
-                    <div className="flex gap-2 mb-2">
-                      <span className="text-xs px-2 py-0.5 rounded font-semibold bg-amber-500/20 text-amber-400">
-                        Original: {city.original_aqi || '--'}
+                    <div className="flex gap-1.5 mb-1">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-amber-500/20 text-amber-400">
+                        AQI: {city.original_aqi || '--'}
                       </span>
-                      <span className="text-xs px-2 py-0.5 rounded font-semibold bg-blue-500/20 text-blue-400">
-                        HCHO Only: {city.simulated_aqi}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-blue-500/20 text-blue-400">
+                        Sim: {city.simulated_aqi}
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-[11px] text-slate-400 border-t border-slate-800/60 pt-2 mt-1">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-800/60 pt-1">
                       <span>Density: {city.vcd_mol_m2} mol/m²</span>
                       <span>Pop: {city.population ? `${(city.population / 1000000).toFixed(1)}M` : 'N/A'}</span>
                     </div>
@@ -479,8 +483,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* TIME-SERIES TREND CHART PANEL */}
-        <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 h-64 shadow-sm shrink-0">
+        {/* ROW 3: COMPACT TREND CHART PANEL */}
+        <div className="bg-[#111827] border border-slate-800 rounded-xl p-3 h-40 shadow-sm shrink-0">
           <TrendChart cityName={selectedCity?.city} data={historyData} />
         </div>
       </div>
