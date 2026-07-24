@@ -28,8 +28,8 @@ export default function VayuTwinDashboard() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          // Sort cities by Real AQI (highest first) for the sidebar
-          const sortedData = data.sort((a, b) => b.original_aqi - a.original_aqi);
+          // Sort cities by Original AQI (highest first) for the sidebar
+          const sortedData = data.sort((a, b) => (b.original_aqi || 0) - (a.original_aqi || 0));
           setCities(sortedData);
         }
       })
@@ -41,7 +41,7 @@ export default function VayuTwinDashboard() {
     city.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Count how many cities have a REAL AQI over 50
+  // Count how many cities have an Original AQI over 50
   const criticalHotspots = cities.filter((city) => city.original_aqi > 50).length;
 
   return (
@@ -66,12 +66,12 @@ export default function VayuTwinDashboard() {
         {/* Header section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-white mb-2">Air Quality Digital Twin</h2>
-          <p className="text-slate-400">Comparing Sentinel-5P HCHO AI Predictions vs. Ground-Truth Sensors</p>
+          <p className="text-slate-400">Comparing Sentinel-5P HCHO Predictions vs. Ground-Truth Sensors</p>
         </div>
 
         {/* Critical Hotspots Card */}
         <div className="bg-[#111827] border border-slate-800 rounded-lg p-6 mb-8 w-1/3 shadow-sm">
-          <h3 className="text-sm font-medium text-slate-400 mb-2">Critical Hotspots (Real AQI &gt; 50)</h3>
+          <h3 className="text-sm font-medium text-slate-400 mb-2">Critical Hotspots (Original AQI &gt; 50)</h3>
           <p className="text-4xl font-bold text-red-500">{criticalHotspots}</p>
         </div>
 
@@ -108,10 +108,18 @@ export default function VayuTwinDashboard() {
                   >
                     <Popup className="text-slate-900 font-sans">
                       <div className="font-bold text-base mb-2">{c.city}</div>
-                      <div className="text-sm text-amber-600 mb-1"><strong>Sensor AQI:</strong> {c.original_aqi || 'N/A'}</div>
-                      <div className="text-sm text-blue-600 mb-1"><strong>AI Predicted AQI:</strong> {c.predicted_aqi}</div>
-                      <div className="text-sm text-slate-600 mb-1"><strong>HCHO VCD:</strong> {c.vcd_mol_m2} mol/m²</div>
-                      <div className="text-sm text-slate-600"><strong>Temp:</strong> {c.temp_c}°C</div>
+                      <div className="text-sm text-amber-600 mb-1">
+                        <strong>Original AQI:</strong> {c.original_aqi || 'N/A'}
+                      </div>
+                      <div className="text-sm text-blue-600 mb-1">
+                        <strong>HCHO Only:</strong> {c.predicted_aqi}
+                      </div>
+                      <div className="text-sm text-slate-600 mb-1">
+                        <strong>HCHO VCD:</strong> {c.vcd_mol_m2} mol/m²
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        <strong>Temp:</strong> {c.temp_c}°C
+                      </div>
                     </Popup>
                   </CircleMarker>
                 ))}
@@ -150,11 +158,17 @@ export default function VayuTwinDashboard() {
                     </div>
                     
                     <div className="flex gap-2 mb-2">
-                      <span className="text-xs px-2 py-1 rounded font-semibold bg-amber-500/20 text-amber-400" title="Ground Truth AQI from Sensors">
-                        Real AQI: {city.original_aqi || '--'}
+                      <span 
+                        className="text-xs px-2 py-1 rounded font-semibold bg-amber-500/20 text-amber-400" 
+                        title="Ground Truth AQI from Sensors"
+                      >
+                        Original: {city.original_aqi || '--'}
                       </span>
-                      <span className="text-xs px-2 py-1 rounded font-semibold bg-blue-500/20 text-blue-400" title="HCHO AI Prediction">
-                        AI AQI: {city.predicted_aqi}
+                      <span 
+                        className="text-xs px-2 py-1 rounded font-semibold bg-blue-500/20 text-blue-400" 
+                        title="HCHO-Derived AQI Prediction"
+                      >
+                        HCHO Only: {city.predicted_aqi}
                       </span>
                     </div>
 
